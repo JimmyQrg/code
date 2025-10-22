@@ -1,202 +1,612 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Code Free Online</title>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="code.png">
 
 <!-- CodeMirror -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/codemirror.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/codemirror.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/mode/python/python.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/mode/clike/clike.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/mode/javascript/javascript.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.14/mode/htmlmixed/htmlmixed.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.15/mode/htmlmixed/htmlmixed.min.js"></script>
 
 <style>
-body {
-    margin:0; font-family:'Press Start 2P', monospace; background:#0b0b0b; display:flex; flex-direction:column; height:100vh;
-}
-header { text-align:center; padding:15px; }
-header h1 { color:#ffffff; text-shadow:0 0 15px #00fffa,0 0 30px #00fffa; margin:0; }
+  :root {
+    --bg: #0d1117; /* T2 theme */
+    --panel: #161b22;
+    --muted-border: #30363d;
+  }
 
-#controls { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; padding:10px; }
-select, button, input[type="file"] { padding:10px; font-size:12px; border:none; border-radius:6px; background:#111; color:#fff; cursor:pointer; }
-select:hover, button:hover, input[type="file"]:hover { background:#00aaff; color:#0b0b0b; }
+  html,body { height:100%; margin:0; background:var(--bg); color:#fff; font-family: monospace; }
+  header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 16px; background:var(--panel); border-bottom:1px solid var(--muted-border);
+  }
+  header h1 { margin:0; font-size:18px; color:#fff; }
 
-#run { width:40px; height:40px; display:flex; justify-content:center; align-items:center; position:relative; }
-#run::before { content:''; border-style:solid; border-width:10px 0 10px 16px; border-color:transparent transparent transparent #ffffff; }
-#run.running::before { content:''; width:16px; height:16px; background-color:#ff0044; }
+  #toolbar { display:flex; align-items:center; gap:10px; }
+  select, button, input[type=file] {
+    background:#21262d; color:#fff; border:1px solid var(--muted-border);
+    padding:6px 10px; border-radius:8px; font-size:13px;
+  }
 
-#main { display:flex; flex:1; overflow:hidden; gap:10px; padding:10px; }
-#editor-container { flex:1; display:flex; flex-direction:column; }
+  /* Run (R3) */
+  button#runBtn {
+    background:#fff; color:#000; width:40px; height:40px; border-radius:8px; border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-weight:700;
+  }
+  button#runBtn.running { background:#ff4c4c; color:#fff; }
 
-#tabs { display:flex; gap:5px; margin-bottom:5px; overflow-x:auto; }
-.tab { background:#111; padding:5px 10px; border-radius:5px 5px 0 0; cursor:pointer; color:#fff; white-space:nowrap; }
-.tab.active { background:#00ffff; color:#000; font-weight:bold; text-shadow:0 0 6px #00ffff; }
+  #main { display:flex; height: calc(100vh - 60px); } /* reserve header height */
+  #editorWrap { flex:1.1; display:flex; flex-direction:column; border-right:1px solid var(--muted-border); }
+  #tabs { display:flex; gap:6px; padding:8px; background:#121416; border-bottom:1px solid var(--muted-border); overflow:auto; }
+  .tab {
+    background:#1f2428; color:#cfe6ff; padding:6px 10px; border-radius:6px 6px 0 0; cursor:pointer; white-space:nowrap;
+  }
+  .tab.active { background:#2b6fb2; color:#fff; font-weight:600; }
 
-.CodeMirror { height:100%; border:2px solid #fff; border-radius:8px; font-size:14px; caret-color:#fff; }
-.cm-s-cyber { background:#0a0a0a; color:#fff; caret-color:#fff; }
-.cm-s-cyber .cm-comment { color:#b0b0b0; font-style:italic; }
-.cm-s-cyber .cm-string { color:#ffa040; text-shadow:0 0 2px #ffa040; }
-.cm-s-cyber .cm-keyword { color:#00d0ff; font-weight:bold; text-shadow:0 0 4px #00d0ff; }
-.cm-s-cyber .cm-number { color:#ffff00; }
-.cm-s-cyber .cm-variable { color:#fff; }
-.cm-s-cyber .cm-def { color:#c080ff; font-weight:bold; text-shadow:0 0 3px #c080ff; }
-.cm-s-cyber .cm-bracket, .cm-s-cyber .cm-paren { color:#fff; font-weight:bold; }
+  /* Editor area */
+  #editor { flex:1; }
+  .CodeMirror { height:100%; background:var(--bg); color:#FFFFFF; caret-color:#FFFFFF; }
+  .CodeMirror pre { white-space: pre-wrap !important; word-wrap: break-word; overflow-wrap: break-word; }
 
-.CodeMirror-cursor { border-left:2px solid #fff !important; animation: blink 1s step-end infinite; }
-@keyframes blink { 0%,50% { border-color:#fff; } 50.1%,100% { border-color:transparent; } }
-.CodeMirror-activeline-background { background:#111; }
-.CodeMirror pre { white-space: pre-wrap !important; word-wrap: break-word; overflow-wrap: break-word; } /* wraps inside strings */
+  /* Right panel output */
+  #rightPanel { flex:1; display:flex; flex-direction:column; gap:8px; padding:12px; background:var(--panel); }
+  #console { flex:1; background:#000; color:#fff; border-radius:8px; padding:10px; overflow:auto; font-family:monospace; white-space:pre-wrap; }
+  #htmlFrame { flex:1; border-radius:8px; border:1px solid #ccc; display:none; width:100%; height:100%; }
+  #inputBox { height:40px; border-radius:8px; border:1px solid var(--muted-border); background: #0d1117; color:#fff; padding:8px; }
 
-#output-container { flex:1; display:flex; flex-direction:column; gap:10px; }
-#output { flex:1; border:2px solid #fff; border-radius:8px; background:#0a0a0a; overflow:auto; padding:10px; white-space:pre-wrap; font-size:13px; color:#fff; }
-#htmlPreview { flex:1; border:2px solid #ccc; border-radius:8px; background:#fff; width:100%; height:100%; overflow:auto; display:none; }
+  /* CodeMirror custom token colors - exact mapping requested */
+  /* make sure to use a custom theme scope */
+  .cm-s-custom .cm-comment { color: #BABABA; }       /* comments */
+  .cm-s-custom .cm-string { color: #EC7D29; }        /* strings -> orange */
+  .cm-s-custom .cm-number { color: #7EF78E; }        /* numbers */
+  .cm-s-custom .cm-keyword { color: #3F92FF; }       /* keywords/operators/dot/comparisons */
+  .cm-s-custom .cm-variable, .cm-s-custom .cm-operator, .cm-s-custom .cm-bracket { color: #FFFFFF; } /* identifiers & brackets & operators */
+  .cm-s-custom .cm-meta { color: #FF36CD; }          /* includes/imports/escapes */
+  .cm-s-custom .cm-func { color: #FFFB7F; }          /* function name only (when followed by '(') */
+  /* Ensure parentheses and punctuation remain white by default (under cm-operator/bracket) */
+
+  /* cursor bright white */
+  .CodeMirror-cursor { border-left:2px solid #FFFFFF !important; }
+
+  /* small responsive */
+  @media (max-width:1000px) {
+    #main { flex-direction:column; }
+    #editorWrap, #rightPanel { height:50vh; }
+  }
 </style>
 </head>
 <body>
+  <header>
+    <h1>Code Free Online</h1>
+    <div id="toolbar">
+      <select id="languageSelect" title="Choose language">
+        <!-- selection list (user-provided) -->
+        <option>Python</option>
+        <option>JavaScript</option>
+        <option>Java</option>
+        <option>C</option>
+        <option>C++</option>
+        <option>C#</option>
+        <option>Go</option>
+        <option>Rust</option>
+        <option>Swift</option>
+        <option>Kotlin</option>
+        <option>TypeScript</option>
+        <option>PHP</option>
+        <option>Ruby</option>
+        <option>R</option>
+        <option>Bash</option>
+        <option>Scala</option>
+        <option>Perl</option>
+        <option>Lua</option>
+        <option>Haskell</option>
+        <option>Dart</option>
+        <option>Objective-C</option>
+        <option>Visual Basic</option>
+        <option>Assembly</option>
+        <option>Fortran</option>
+        <option>COBOL</option>
+        <option>Lisp</option>
+        <option>Scheme</option>
+        <option>Prolog</option>
+        <option>F#</option>
+        <option>Elixir</option>
+        <option>Erlang</option>
+        <option>Crystal</option>
+        <option>Julia</option>
+        <option>Ada</option>
+        <option>OCaml</option>
+        <option>Smalltalk</option>
+        <option>D (DLang)</option>
+        <option>Tcl</option>
+        <option>Rexx</option>
+        <option>CLIPS</option>
+        <option>Chapel</option>
+        <option>SML</option>
+        <option>VHDL</option>
+        <option>Verilog</option>
+        <option>Solidity</option>
+        <option>Hack</option>
+        <option>Apex</option>
+        <option>Q#</option>
+        <option>GLSL</option>
+        <option>mcmeta</option>
+        <option>json</option>
+        <option>txt</option>
+        <option>bash</option>
+        <option>md</option>
+      </select>
 
-<header><h1>Code Free Online</h1></header>
+      <input id="importFile" type="file" accept=".py,.js,.java,.c,.cpp,.cs,.go,.rs,.swift,.kt,.ts,.php,.rb,.r,.sh,.scala,.pl,.lua,.hs,.dart,.m,.vb,.s,.f90,.f,.for,.cob,.lisp,.scm,.pro,.fs,.ex,.erl,.cr,.jl,.ada,.ml,.st,.d,.tcl,.rexx,.json,.mcmeta,.txt,.md" title="Import file (<=3GB)">
 
-<div id="controls">
-    <select id="language" onchange="changeMode()">
-        <option value="python3">Python 3</option>
-        <option value="cpp">C++</option>
-        <option value="c">C</option>
-        <option value="csharp">C#</option>
-        <option value="java">Java</option>
-        <option value="html">HTML</option>
-        <option value="javascript">JavaScript</option>
-        <option value="ruby">Ruby</option>
-        <option value="go">Go</option>
-        <option value="php">PHP</option>
-        <option value="swift">Swift</option>
-        <option value="rust">Rust</option>
-        <option value="kotlin">Kotlin</option>
-    </select>
-    <button id="run" onclick="toggleRun()"></button>
-    <button onclick="downloadCode()">Download</button>
-    <input type="file" id="importFile" accept=".py,.cpp,.c,.cs,.java,.html,.js,.rb,.go,.php,.swift,.rs,.kt,.txt" onchange="importFile()">
-</div>
-
-<div id="main">
-    <div id="editor-container">
-        <div id="tabs"></div>
-        <textarea id="editor">// Write your code here</textarea>
+      <button id="runBtn" title="Run (▶)">&nbsp;&#9654;&nbsp;</button>
+      <button id="downloadBtn" title="Download current file">Download</button>
     </div>
-    <div id="output-container">
-        <pre id="output">Output will appear here...</pre>
-        <iframe id="htmlPreview"></iframe>
+  </header>
+
+  <div id="main">
+    <div id="editorWrap">
+      <div id="tabs"></div>
+      <div id="editor"></div>
     </div>
-</div>
+
+    <div id="rightPanel">
+      <div id="console" aria-live="polite">Console output will appear here...</div>
+      <iframe id="htmlFrame" title="HTML Preview" style="display:none;"></iframe>
+      <input id="inputBox" placeholder="Program stdin (one-line input is passed as stdin)" />
+    </div>
+  </div>
 
 <script>
-// Tabs & Multi-file
-let tabs = [];
-let activeTab = null;
-function addTab(name="newFile.py", lang="python3", content="// Write your code here"){
-    const tab = {name, lang, content};
-    tabs.push(tab);
-    renderTabs();
-    switchTab(tab);
-}
-function renderTabs(){
-    const tabsDiv = document.getElementById('tabs');
-    tabsDiv.innerHTML = "";
-    tabs.forEach(tab=>{
-        const div=document.createElement('div'); div.className="tab"; div.textContent=tab.name;
-        if(tab===activeTab) div.classList.add('active');
-        div.onclick=()=>switchTab(tab);
-        tabsDiv.appendChild(div);
-    });
-}
-function switchTab(tab){
-    if(activeTab) activeTab.content = activeTab.editorValue || editor.getValue();
-    activeTab = tab;
-    editor.setValue(tab.content);
-    document.getElementById('language').value = tab.lang;
-    changeMode();
-    renderTabs();
+/* ---------- Utilities & mapping ---------- */
+
+/* mapping from user-friendly dropdown into piston language id (best-effort) */
+const pistonMap = {
+  "Python":"python",
+  "JavaScript":"javascript",
+  "Java":"java",
+  "C":"c",
+  "C++":"cpp",
+  "C#":"csharp",
+  "Go":"go",
+  "Rust":"rust",
+  "Swift":"swift",
+  "Kotlin":"kotlin",
+  "TypeScript":"typescript",
+  "PHP":"php",
+  "Ruby":"ruby",
+  "R":"r",
+  "Bash":"bash",
+  "Scala":"scala",
+  "Perl":"perl",
+  "Lua":"lua",
+  "Haskell":"haskell",
+  "Dart":"dart",
+  "Objective-C":"objc",
+  "Visual Basic":"vbnet",
+  "Assembly":"assembly",
+  "Fortran":"fortran",
+  "COBOL":"cobol",
+  "Lisp":"lisp",
+  "Scheme":"scheme",
+  "Prolog":"prolog",
+  "F#":"fsharp",
+  "Elixir":"elixir",
+  "Erlang":"erlang",
+  "Crystal":"crystal",
+  "Julia":"julia",
+  "Ada":"ada",
+  "OCaml":"ocaml",
+  "Smalltalk":"smalltalk",
+  "D (DLang)":"d",
+  "Tcl":"tcl",
+  "Rexx":"rexx",
+  "CLIPS":"clips",
+  "Chapel":"chapel",
+  "SML":"sml",
+  "VHDL":"vhdl",
+  "Verilog":"verilog",
+  "Solidity":"solidity",
+  "Hack":"hack",
+  "Apex":"apex",
+  "Q#":"qsharp",
+  "GLSL":"glsl",
+  "mcmeta":"mcmeta",
+  "json":"json",
+  "txt":"txt",
+  "md":"md",
+  "bash":"bash"
+};
+
+/* which languages we consider runnable via the remote executor */
+const runnableLanguages = new Set([
+  "python","javascript","java","c","cpp","csharp","go","rust","swift","kotlin","typescript",
+  "php","ruby","r","bash","scala","perl","lua","haskell","dart","objc","vbnet","assembly",
+  "fortran","cobol","lisp","scheme","prolog","fsharp","elixir","erlang","crystal","julia",
+  "ada","ocaml","smalltalk","d","tcl","rexx","clips","chapel","sml","vhdl","verilog","solidity",
+  "hack","apex","qsharp","glsl"
+]);
+
+/* file extension mapping for downloads */
+const downloadExt = {
+  "Python":"py","JavaScript":"js","Java":"java","C":"c","C++":"cpp","C#":"cs","Go":"go","Rust":"rs",
+  "Swift":"swift","Kotlin":"kt","TypeScript":"ts","PHP":"php","Ruby":"rb","R":"r","Bash":"sh","Scala":"scala",
+  "Perl":"pl","Lua":"lua","Haskell":"hs","Dart":"dart","Objective-C":"m","Visual Basic":"vb","Assembly":"s",
+  "Fortran":"f90","COBOL":"cob","Lisp":"lisp","Scheme":"scm","Prolog":"pro","F#":"fs","Elixir":"ex","Erlang":"erl",
+  "Crystal":"cr","Julia":"jl","Ada":"adb","OCaml":"ml","Smalltalk":"st","D (DLang)":"d","Tcl":"tcl","Rexx":"rexx",
+  "CLIPS":"clp","Chapel":"chpl","SML":"sml","VHDL":"vhdl","Verilog":"v","Solidity":"sol","Hack":"php","Apex":"cls",
+  "Q#":"qs","GLSL":"glsl","mcmeta":"mcmeta","json":"json","txt":"txt","md":"md","bash":"sh"
+};
+
+/* special filenames mapping */
+function defaultFilenameFor(langName) {
+  if(langName==="HTML"||langName==="htmlmixed") return "index.html";
+  if(langName==="CSS") return "style.css";
+  if(langName==="JavaScript") return "game.js";
+  if(langName==="md") return "readme.md";
+  if(langName==="txt") return "text.txt";
+  const ext = downloadExt[langName];
+  return "code." + (ext || "txt");
 }
 
-// Initialize CodeMirror
-let editor = CodeMirror.fromTextArea(document.getElementById('editor'), {
-    lineNumbers: true,
-    mode: 'python',
-    theme: 'cyber',
-    indentUnit: 2,
-    tabSize: 2,
-    autoCloseBrackets: true,
-    matchBrackets: true,
-    styleActiveLine: true,
-    lineWrapping: true,
+/* ---------- Editor + Tabs ---------- */
+
+const tabsContainer = document.getElementById('tabs');
+const languageSelect = document.getElementById('languageSelect');
+const consoleEl = document.getElementById('console');
+const htmlFrame = document.getElementById('htmlFrame');
+const inputBox = document.getElementById('inputBox');
+const runBtn = document.getElementById('runBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const importFile = document.getElementById('importFile');
+
+let codeTabsByLang = {}; // { langName: [ {name, content} ] }
+let activeLang = languageSelect.value;
+let activeTabIndex = 0;
+
+function ensureLangTabs(lang) {
+  if(!codeTabsByLang[lang]) {
+    codeTabsByLang[lang] = [];
+    // create one default file
+    const defaultName = defaultFilenameFor(lang);
+    codeTabsByLang[lang].push({ name: defaultName, content: `// ${lang} - new file\n` });
+  }
+}
+
+/* initialize */
+function initTabs() {
+  const lang = activeLang;
+  ensureLangTabs(lang);
+  renderTabs();
+  loadActiveTab();
+}
+languageSelect.addEventListener('change', ()=>{
+  // save current content
+  const prevLang = activeLang;
+  codeTabsByLang[prevLang][activeTabIndex].content = editor.getValue();
+
+  activeLang = languageSelect.value;
+  ensureLangTabs(activeLang);
+  activeTabIndex = 0;
+  renderTabs();
+  loadActiveTab();
+
+  // hide/show html pane
+  if(activeLang.toLowerCase().includes('html')) {
+    htmlFrame.style.display = 'block';
+  } else {
+    htmlFrame.style.display = 'none';
+  }
 });
-editor.setOption("extraKeys", {
-    Tab: cm=>cm.replaceSelection("  "),
-    Enter: function(cm){
-        let pos=cm.getCursor(); let line=cm.getLine(pos.line);
-        if(line.trim().endsWith(":")||line.trim().endsWith("{")) cm.replaceSelection("\n  ");
-        else cm.replaceSelection("\n");
+
+/* render tabs */
+function renderTabs() {
+  tabsContainer.innerHTML = '';
+  const tabs = codeTabsByLang[activeLang];
+  tabs.forEach((t, idx) => {
+    const d = document.createElement('div');
+    d.className = 'tab' + (idx===activeTabIndex ? ' active' : '');
+    d.textContent = t.name;
+    d.onclick = ()=> {
+      // save current content
+      codeTabsByLang[activeLang][activeTabIndex].content = editor.getValue();
+      activeTabIndex = idx;
+      loadActiveTab();
+      renderTabs();
+    };
+    tabsContainer.appendChild(d);
+  });
+}
+
+/* create new tab helper (ctrl+shift+n) */
+function createNewTab(filename, content) {
+  filename = filename || defaultFilenameFor(activeLang);
+  const arr = codeTabsByLang[activeLang];
+  arr.push({name: filename, content: content || ''});
+  activeTabIndex = arr.length - 1;
+  renderTabs();
+  loadActiveTab();
+}
+
+function loadActiveTab() {
+  const tab = codeTabsByLang[activeLang][activeTabIndex];
+  editor.setValue(tab.content || '');
+  updateHtmlPreviewIfNeeded();
+}
+
+/* ---------- CodeMirror initialization & overlay for function names ---------- */
+
+const editor = CodeMirror(document.getElementById('editor'), {
+  value: '',
+  mode: 'python',
+  theme: 'custom',
+  lineNumbers: true,
+  indentUnit: 2,
+  tabSize: 2,
+  lineWrapping: true,
+  autoCloseBrackets: true,
+});
+
+/* define a simple overlay that marks "function name" when followed by '(' */
+CodeMirror.defineMode("function-overlay", function(config, parserConfig) {
+  return {
+    token: function(stream, state) {
+      // If there's whitespace or punctuation, move forward
+      if (stream.match(/^[A-Za-z_]\w*(?=\s*\()/, true)) {
+        return "func"; // becomes cm-func
+      }
+      // otherwise consume one character and continue
+      stream.next();
+      return null;
     }
+  };
 });
-editor.on("change", function(cm, change){
-    if(change.origin!==' +input') return;
-    const lines=cm.getValue().split("\n");
-    if(lines.length>=2){ const lastTwo=lines.slice(-2); if(lastTwo[0].trim()===""&&lastTwo[1].trim()==="") cm.replaceRange("}", {line:lines.length-1,ch:0}); }
+editor.addOverlay("function-overlay");
+
+/* apply our custom theme class so CSS .cm-s-custom applies */
+editor.getWrapperElement().classList.add('cm-s-custom');
+
+/* extra behaviors: tab -> two spaces, auto pairs, auto-indent after : and {, auto-close } after two lines */
+editor.setOption('extraKeys', {
+  Tab: cm => cm.replaceSelection("  "),
+  Enter: function(cm) {
+    const pos = cm.getCursor();
+    const line = cm.getLine(pos.line);
+    cm.execCommand("newlineAndIndent");
+    const trimmed = line.trim();
+    if(trimmed.endsWith(':') || trimmed.endsWith('{')) {
+      cm.replaceSelection("  ");
+    }
+    // auto-close } after two non-empty lines following a line with {
+    const langLower = activeLang.toLowerCase();
+    if(trimmed.includes('{') && ['c','c++','java','javascript','c#','go','rust','swift','kotlin'].some(k=>langLower.includes(k))) {
+      // small timeout to let the new lines exist
+      setTimeout(()=>{
+        const n1 = cm.getLine(pos.line+1) || "";
+        const n2 = cm.getLine(pos.line+2) || "";
+        if(n1.trim()!=="" && n2.trim()!=="}") {
+          const indent = line.match(/^\s*/)[0] || "";
+          cm.replaceRange("\n" + indent + "}", {line: pos.line+2, ch:0});
+        }
+      }, 60);
+    }
+  },
+  "'": cm => { cm.replaceSelection("''"); cm.setCursor(cm.getCursor().line, cm.getCursor().ch-1); },
+  '"': cm => { cm.replaceSelection('""'); cm.setCursor(cm.getCursor().line, cm.getCursor().ch-1); },
+  "`": cm => { cm.replaceSelection('``'); cm.setCursor(cm.getCursor().line, cm.getCursor().ch-1); },
+  "(": cm => { cm.replaceSelection("()"); cm.setCursor(cm.getCursor().line, cm.getCursor().ch-1); }
 });
 
-// Language & Mode
-function changeMode(){
-    const lang=document.getElementById('language').value;
-    const cmModeMap={python3:'python', cpp:'text/x-c++src', c:'text/x-csrc', csharp:'text/x-csharp',
-                     java:'text/x-java', html:'htmlmixed', javascript:'javascript', ruby:'ruby',
-                     go:'go', php:'php', swift:'swift', rust:'rust', kotlin:'text/x-kotlin'};
-    editor.setOption('mode', cmModeMap[lang]||'text');
-    const htmlPreview = document.getElementById('htmlPreview');
-    htmlPreview.style.display=(lang==='html')?'block':'none';
-    if(lang==='html') updateHTMLPreview();
-}
-function updateHTMLPreview(){ document.getElementById('htmlPreview').srcdoc=editor.getValue(); }
-editor.on('change', ()=>{ if(document.getElementById('language').value==='html') updateHTMLPreview(); });
-
-// Import & Run
-function importFile(){ const file=document.getElementById('importFile').files[0]; if(!file)return; if(file.size>3*1024*1024*1024){alert("File too large");return;}
-const reader=new FileReader(); reader.onload=e=>{activeTab.content=e.target.result; editor.setValue(activeTab.content);}; reader.readAsText(file); }
-
-let running=false; let currentRequest=null;
-function toggleRun(){ if(!running) runCode(); else{ if(currentRequest)currentRequest.abort(); running=false; setRunButton(false); document.getElementById('output').textContent+="\nExecution stopped."; } }
-function setRunButton(isRunning){ const btn=document.getElementById('run'); running=isRunning; if(isRunning) btn.classList.add('running'); else btn.classList.remove('running'); }
-
-async function runCode(){
-    setRunButton(true);
-    const language=document.getElementById('language').value;
-    const code=editor.getValue();
-    const outputEl=document.getElementById('output'); outputEl.textContent="Running...\n";
-    if(language==='html'){ updateHTMLPreview(); outputEl.textContent="HTML preview updated."; setRunButton(false); return; }
-    const langMap={python3:"python", cpp:"cpp", c:"c", csharp:"csharp", java:"java",
-                   javascript:"javascript", ruby:"ruby", go:"go", php:"php", swift:"swift",
-                   rust:"rust", kotlin:"kotlin"};
-    const controller=new AbortController(); currentRequest=controller;
-    try{
-        const response=await fetch('https://emkc.org/api/v2/piston/execute',{
-            method:'POST', headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({language:langMap[language]||"python", version:"*", files:[{name:"code."+getExtension(language), content:code}]}),
-            signal:controller.signal
-        });
-        const data=await response.json();
-        outputEl.textContent=data.run?.output || "No output";
-    } catch(err){ outputEl.textContent=(err.name==='AbortError')?"Execution aborted.":"Error: "+err.message; }
-    setRunButton(false);
+/* update HTML preview for active tab if HTML */
+function updateHtmlPreviewIfNeeded() {
+  const lang = activeLang.toLowerCase();
+  if(lang.includes('html')) {
+    htmlFrame.style.display = 'block';
+    const content = editor.getValue();
+    // show in iframe but do not navigate away
+    htmlFrame.srcdoc = content;
+  } else {
+    htmlFrame.style.display = 'none';
+  }
 }
 
-function downloadCode(){ const code=editor.getValue(); const lang=document.getElementById('language').value; const blob=new Blob([code],{type:'text/plain'});
-const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`code.${getExtension(lang)}`; a.click(); URL.revokeObjectURL(url); }
-function getExtension(lang){ const map={python3:"py", cpp:"cpp", c:"c", csharp:"cs", java:"java", html:"html", javascript:"js", ruby:"rb", go:"go", php:"php", swift:"swift", rust:"rs", kotlin:"kt"}; return map[lang]||"txt"; }
+/* save current content before unload / switching */
+window.addEventListener('beforeunload', ()=> {
+  codeTabsByLang[activeLang][activeTabIndex].content = editor.getValue();
+});
 
-// Add initial tab
-addTab("main.py","python3","print('Hello World')");
+/* keyboard shortcuts: Ctrl/Cmd+S to download, Ctrl+Shift+N new tab */
+window.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='s') {
+    e.preventDefault(); triggerDownload();
+  } else if(e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='n') {
+    e.preventDefault(); createNewTab();
+  }
+});
+
+/* ---------- initialize tab data and editor value ---------- */
+activeLang = languageSelect.value;
+ensureLangTabs(activeLang);
+renderTabs();
+loadActiveTab();
+
+/* ---------- Import file handling (<= 3GB) ---------- */
+importFile.addEventListener('change', (ev)=>{
+  const f = ev.target.files[0];
+  if(!f) return;
+  if(f.size > 3 * 1024 * 1024 * 1024) { alert('File too large (max 3GB)'); return; }
+  const reader = new FileReader();
+  reader.onload = ()=> {
+    // put contents into current tab
+    codeTabsByLang[activeLang][activeTabIndex].content = reader.result;
+    loadActiveTab();
+  };
+  reader.readAsText(f);
+});
+
+/* ---------- Download behavior ---------- */
+function triggerDownload() {
+  codeTabsByLang[activeLang][activeTabIndex].content = editor.getValue();
+  const tab = codeTabsByLang[activeLang][activeTabIndex];
+  const langName = activeLang;
+  let filename = tab.name || defaultFilenameFor(langName);
+  // adjust default names for some languages by spec
+  if(langName.toLowerCase().includes('html')) filename = 'index.html';
+  else if(langName === 'JavaScript') filename = 'game.js';
+  else if(filename === undefined) filename = defaultFilenameFor(langName);
+  const blob = new Blob([tab.content], {type: 'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+downloadBtn.addEventListener('click', triggerDownload);
+
+/* ---------- Execution logic (Piston API) ---------- */
+
+let running = false;
+runBtn.addEventListener('click', async ()=>{
+  // save current content
+  codeTabsByLang[activeLang][activeTabIndex].content = editor.getValue();
+  await runCurrent();
+});
+
+async function runCurrent() {
+  if(running) {
+    // stop behavior: we do not have a persistent socket; user can click again to cancel next call
+    running = false;
+    runBtn.classList.remove('running');
+    runBtn.innerHTML = ' ▶ ';
+    return;
+  }
+  running = true;
+  runBtn.classList.add('running');
+  runBtn.innerHTML = ' ■ ';
+
+  const langName = activeLang;
+  const langKey = (pistonMap[langName] || langName).toLowerCase();
+  const tab = codeTabsByLang[activeLang][activeTabIndex];
+  const code = tab.content || editor.getValue();
+  const stdin = inputBox.value || "";
+
+  // HTML special case: open new tab with index.html
+  if(langName.toLowerCase().includes('html')) {
+    try {
+      const w = window.open('', '_blank');
+      if(!w) {
+        consoleEl('Could not open new tab. Please allow popups for this site.');
+      } else {
+        w.document.open();
+        w.document.write(code);
+        w.document.close();
+      }
+      toastConsole('Opened HTML in a new tab (index.html).');
+    } catch(err) {
+      toastConsole('Failed to open HTML: ' + err.message);
+    } finally {
+      running = false;
+      runBtn.classList.remove('running');
+      runBtn.innerHTML = ' ▶ ';
+    }
+    return;
+  }
+
+  // Non-runnable languages: treat as download-only
+  if(!runnableLanguages.has(langKey)) {
+    toastConsole(`"${langName}" is not runnable in this IDE. Use Download to save the file.`);
+    running = false;
+    runBtn.classList.remove('running');
+    runBtn.innerHTML = ' ▶ ';
+    return;
+  }
+
+  // prepare payload for Piston
+  const payload = {
+    language: langKey,
+    version: "*",
+    files: [{ name: defaultFilenameFor(langName), content: code }],
+    stdin: stdin
+  };
+
+  // POST to piston
+  toastConsole(`[${langName}] Running...`);
+
+  try {
+    const controller = new AbortController();
+    // store in global so can be aborted in future - not persistent across runs here
+    window._lastController = controller;
+
+    const resp = await fetch('https://emkc.org/api/v2/piston/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    if(!resp.ok) {
+      const txt = await resp.text();
+      toastConsole(`Execution request failed: ${resp.status} ${resp.statusText}\n${txt}`);
+    } else {
+      const result = await resp.json();
+      // robust parsing to avoid undefined errors
+      let out = '';
+      if(result && result.run) {
+        out = result.run.output ?? result.run.stdout ?? result.run.stderr ?? '';
+      }
+      if(!out && result && result.output) out = result.output;
+      if(!out && result && result.message) out = 'Error: ' + result.message;
+      if(!out) out = 'No output.';
+      toastConsole(out);
+    }
+  } catch(err) {
+    if(err.name === 'AbortError') toastConsole('Execution aborted.');
+    else toastConsole('Execution error: ' + (err.message || String(err)));
+  } finally {
+    running = false;
+    runBtn.classList.remove('running');
+    runBtn.innerHTML = ' ▶ ';
+  }
+}
+
+/* helper to append to console */
+function toastConsole(text) {
+  const el = consoleEl;
+  const ts = new Date().toLocaleTimeString();
+  el.textContent = `[${ts}] ${text}\n` + el.textContent;
+}
+
+/* ---------- initial sample content for popular languages ---------- */
+const samples = {
+  "Python": `print("Hello from Python")\nname = input("Enter name: ")\nprint("Hi", name)`,
+  "JavaScript": `console.log("Hello from JavaScript");\n// type input in the box and run (browser stdout won't pick stdin)`,
+  "C": `#include <stdio.h>\nint main() {\n  printf("Hello C\\n");\n  return 0;\n}`,
+  "C++": `#include <iostream>\nusing namespace std;\nint main(){ cout << "Hello C++\\n"; return 0; }`,
+  "Java": `class Main { public static void main(String[] args){ System.out.println("Hello Java"); } }`
+};
+
+/* Fill initial tabs with samples for common languages */
+for(const key of Object.keys(pistonMap)) {
+  if(!codeTabsByLang[key]) codeTabsByLang[key] = [];
+  if(codeTabsByLang[key].length===0) {
+    codeTabsByLang[key].push({ name: defaultFilenameFor(key), content: samples[key] || `// ${key} sample` });
+  }
+}
+
+/* load default */
+renderTabs();
+loadActiveTab();
+
+/* expose createNewTab globally for shortcuts */
+window.createNewTab = createNewTab;
+
 </script>
 </body>
 </html>
